@@ -1,0 +1,214 @@
+/* src/styles/components/ContactUs.module.css */
+
+.contactSection {
+  padding: 5rem 1rem;
+  background: var(--background);
+  color: var(--text-primary);
+  text-align: center;
+  position: relative;
+}
+
+.contactSection::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent 0%, var(--border) 50%, transparent 100%);
+}
+
+.container {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+.title {
+  font-size: 3rem;
+  font-weight: 800;
+  margin-bottom: 1.5rem;
+  color: var(--text-primary);
+  position: relative;
+  display: inline-block;
+}
+
+.title::after {
+  content: '';
+  position: absolute;
+  bottom: -12px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 80px;
+  height: 4px;
+  background: linear-gradient(90deg, var(--primary) 0%, var(--primary-light) 100%);
+  border-radius: var(--radius-full);
+}
+
+.description {
+  font-size: 1.15rem;
+  line-height: 1.8;
+  margin-bottom: 3rem;
+  color: var(--text-secondary);
+  max-width: 700px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.contactInfo {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 2rem;
+  margin-bottom: 4rem;
+}
+
+.infoItem {
+  background: var(--surface);
+  padding: 2rem 1.5rem;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  border: 2px solid var(--border-light);
+  transition: all var(--transition-base);
+}
+
+.infoItem:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg);
+  border-color: var(--primary-light);
+}
+
+.infoItem h3 {
+  font-size: 1.4rem;
+  color: var(--text-primary);
+  margin-bottom: 0.8rem;
+  font-family: var(--font-heading);
+  font-weight: 700;
+}
+
+.infoItem p {
+  font-size: 1.05rem;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.contactForm {
+  background: var(--surface);
+  padding: 3rem;
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-lg);
+  border: 2px solid var(--border-light);
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  max-width: 700px;
+  margin: 0 auto;
+}
+
+.contactForm h3 {
+  font-size: 2rem;
+  color: var(--text-primary);
+  margin-bottom: 1rem;
+  font-family: var(--font-heading);
+  font-weight: 700;
+}
+
+.inputField,
+.textareaField {
+  width: 100%;
+  padding: 1rem 1.25rem;
+  border: 2px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--background);
+  color: var(--text-primary);
+  font-size: 1rem;
+  transition: all var(--transition-base);
+  font-family: var(--font-body);
+}
+
+.inputField:focus,
+.textareaField:focus {
+  border-color: var(--primary);
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(193, 122, 74, 0.1);
+  background: var(--surface);
+}
+
+.inputField::placeholder,
+.textareaField::placeholder {
+  color: var(--text-tertiary);
+}
+
+.textareaField {
+  resize: vertical;
+  min-height: 120px;
+}
+
+.submitButton {
+  background: var(--primary);
+  color: white;
+  border: none;
+  padding: 1.1rem 2.5rem;
+  border-radius: var(--radius-md);
+  font-size: 1.1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all var(--transition-base);
+  box-shadow: var(--shadow-sm);
+  position: relative;
+  overflow: hidden;
+}
+
+.submitButton::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.3);
+  transform: translate(-50%, -50%);
+  transition: width 0.6s, height 0.6s;
+}
+
+.submitButton:active::before {
+  width: 300px;
+  height: 300px;
+}
+
+.submitButton:hover {
+  background: var(--primary-dark);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.submitButton:active {
+  transform: translateY(0);
+}
+
+@media (max-width: 768px) {
+  .contactSection {
+    padding: 3rem 1rem;
+  }
+
+  .title {
+    font-size: 2.2rem;
+  }
+
+  .description {
+    font-size: 1.05rem;
+  }
+
+  .contactInfo {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+
+  .contactForm {
+    padding: 2rem 1.5rem;
+  }
+
+  .contactForm h3 {
+    font-size: 1.6rem;
+  }
+}

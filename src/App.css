@@ -1,0 +1,9 @@
+/* src/App.css */
+
+/* Minimal app-specific styles - most styles are in theme.css and global.css */
+#root {
+  width: 100%;
+  min-height: 100vh;
+}
+
+/* Remove max-width constraint to allow full-width layouts */
