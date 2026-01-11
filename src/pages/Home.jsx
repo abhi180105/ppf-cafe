@@ -9,6 +9,7 @@ import MenuSearch from "../components/MenuSearch";
 import ComboDeal from "../components/ComboDeal";
 
 import ReviewSystem from "../components/ReviewSystem";
+import FeedbackSystem from "../components/FeedbackSystem";
 import OrderTypeTabs from "../components/OrderTypeTabs";
 import BowlBar from "../components/BowlBar";
 import FloatingWhatsAppButton from "../components/FloatingWhatsAppButton";
@@ -223,6 +224,11 @@ export default function Home({ showBowl, setShowBowl }) {
       {/* ⭐ Review Section */}
       <div id="reviews">
         <ReviewSystem />
+      </div>
+
+      {/* 💬 Feedback Section */}
+      <div id="feedback">
+        <FeedbackSystem />
       </div>
 
       {/* 🛒 Bowl Bar (bottom) */}
