@@ -119,6 +119,53 @@ function addReview(body) {
   return { success: true, message: "Review added successfully!" };
 }
 
+/** Place Order */
+function placeOrder(data) {
+  const ss = SpreadsheetApp.openById(SHEET_ID);
+  let sheet = ss.getSheetByName('Orders');
+  if (!sheet) {
+    sheet = ss.insertSheet('Orders');
+    sheet.appendRow([
+      'Order ID', 'Created Time', 'Customer Name', 'Phone', 'Address', 'Items', 'Total',
+      'Delivery/Pickup', 'Order Mode', 'Scheduled Date', 'Scheduled Time',
+      'Scheduled DateTime', 'Latitude', 'Longitude', 'Distance', 'Status'
+    ]);
+  }
+
+  // Generate Order ID
+  const lastRow = sheet.getLastRow();
+  const orderNumber = lastRow > 1 ? lastRow : 1;
+  const orderId = 'PPF-' + String(orderNumber).padStart(6, '0');
+
+  // Verify distance for delivery
+  if (String(data.orderType).toLowerCase() === 'delivery') {
+    if (data.distance > 2) {
+      return { error: "Delivery not available outside 2 km radius." };
+    }
+  }
+
+  sheet.appendRow([
+    orderId,
+    new Date().toISOString(),
+    data.customerName || '',
+    data.phone || '',
+    data.address || '',
+    data.items || '',
+    data.total || 0,
+    data.orderType || '',
+    data.orderMode || 'ASAP',
+    data.scheduledDate || '',
+    data.scheduledTime || '',
+    data.scheduledDateTime || '',
+    data.latitude || '',
+    data.longitude || '',
+    data.distance || '',
+    'Pending'
+  ]);
+
+  return { success: true, orderId: orderId, message: "Order placed successfully!" };
+}
+
 /** Status API */
 function getStatus() {
   const rows = readSheetAsObjects(STATUS_SHEET);
@@ -184,6 +231,8 @@ function doPost(e) {
 
     if (action === "addreview") {
       result = addReview(body);
+    } else if (action === "placeorder") {
+      result = placeOrder(body.data);
     } else {
       result = { error: "Unknown action: " + body.action };
     }
@@ -191,36 +240,12 @@ function doPost(e) {
     const output = ContentService.createTextOutput(JSON.stringify(result))
       .setMimeType(ContentService.MimeType.JSON);
     
-    // Add CORS headers
-    output.setHeaders({
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type'
-    });
-    
     return output;
 
   } catch (err) {
     const output = ContentService.createTextOutput(JSON.stringify({ error: "Server error: " + err.message }))
       .setMimeType(ContentService.MimeType.JSON);
     
-    output.setHeaders({
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type'
-    });
-    
     return output;
   }
-}
-
-/** OPTIONS Router for CORS preflight */
-function doOptions(e) {
-  const output = ContentService.createTextOutput('');
-  output.setHeaders({
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type'
-  });
-  return output;
 }

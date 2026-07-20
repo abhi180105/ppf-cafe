@@ -38,9 +38,9 @@ export const CafeProvider = ({ children }) => {
   const [customerInfo, setCustomerInfoState] = useState(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEYS.CUSTOMER_INFO);
-      return saved ? JSON.parse(saved) : { name: "", address: "" };
+      return saved ? JSON.parse(saved) : { name: "", phone: "", address: "" };
     } catch {
-      return { name: "", address: "" };
+      return { name: "", phone: "", address: "" };
     }
   });
 
@@ -136,7 +136,23 @@ export const CafeProvider = ({ children }) => {
       if (!data || typeof data.isOpen !== 'boolean') {
         throw new Error("Invalid status data");
       }
-      setStatus(data);
+      
+      const parseSheetTime = (timeStr, defaultTime) => {
+        if (!timeStr) return defaultTime;
+        if (String(timeStr).includes("T")) {
+           const d = new Date(timeStr);
+           if (!isNaN(d.getTime())) {
+             return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+           }
+        }
+        return timeStr;
+      };
+
+      setStatus({
+        ...data,
+        openTime: parseSheetTime(data.openTime, import.meta.env.VITE_DEFAULT_OPEN_TIME || DEFAULT_TIMES.OPEN),
+        closeTime: parseSheetTime(data.closeTime, import.meta.env.VITE_DEFAULT_CLOSE_TIME || DEFAULT_TIMES.CLOSE)
+      });
     } catch (err) {
       console.error("Status Fetch Error:", err.message);
       setStatus({
@@ -292,7 +308,7 @@ export const CafeProvider = ({ children }) => {
     }
   }, [loadReviews]);
 
-  const buildWhatsAppMessage = useCallback(() => {
+  const buildWhatsAppMessage = useCallback((orderId = null, extraData = {}) => {
     const phone = import.meta.env.VITE_WHATSAPP_NUMBER;
     const safeBowl = Array.isArray(bowl) ? bowl : [];
 
@@ -303,45 +319,61 @@ export const CafeProvider = ({ children }) => {
                             orderType === "takeaway" ? "Takeaway" : "Delivery";
 
     const sanitizedName = (customerInfo?.name || "Not provided").replace(/[*_~`]/g, '');
+    const sanitizedPhone = (customerInfo?.phone || "Not provided").replace(/[*_~`]/g, '');
     const sanitizedAddress = (customerInfo?.address || "Not provided").replace(/[*_~`]/g, '');
     const sanitizedInstructions = specialInstructions.replace(/[*_~`]/g, '');
 
-    let customerSection = `👤 *Customer Details*\n`;
+    const { schedule, location } = extraData;
+
+    let headerSection = `🍔 *New Order*\n\n`;
+    if (orderId) headerSection += `*Order ID:* ${orderId}\n`;
+
+    let customerSection = `👤 *Customer*\n`;
     customerSection += `Name: ${sanitizedName}\n`;
+    customerSection += `Phone: ${sanitizedPhone}\n`;
+    
     if (orderType === "delivery") {
       customerSection += `📍 Address: ${sanitizedAddress}\n`;
     }
 
+    let orderInfoSection = `🛒 *ORDER DETAILS*\n`;
+    if (extraData?.schedule && extraData.schedule.mode === "Scheduled") {
+      orderInfoSection += `Order Timing: Scheduled\nDate: ${extraData.schedule.date}\nTime: ${extraData.schedule.time}\n`;
+    } else {
+      orderInfoSection += `Order Timing: ASAP\n`;
+    }
+    orderInfoSection += `Type: ${orderType === "takeaway" ? "Pickup" : orderType === "dine-in" ? "Dine-in" : "Delivery"}\n`;
+
     // Build items list
     const items = safeBowl
-      .map((b) => `• ${b.name} ×${b.quantity}`)
+      .map((b) => `• ${b.quantity} ${b.name}`)
       .join("\n");
 
     const total = calculateTotal();
+
+    let locationSection = '';
+    if (location && location.lat && location.lng) {
+      locationSection = `\n🗺️ *Location:*\nhttps://maps.google.com/?q=${location.lat},${location.lng}\n`;
+    }
 
     const instructionsSection = sanitizedInstructions 
       ? `\n📝 *Special Instructions:*\n${sanitizedInstructions}\n` 
       : '';
 
     // Build complete message with improved formatting
-    const message = `🍽️ *ORDER FROM ${APP_NAME.toUpperCase()}*
-
-${customerSection}
-📦 *Order Type:* ${orderTypeDisplay}
-
-🛒 *Items Ordered*
+    const message = `${headerSection}${customerSection}\n${orderInfoSection}
+🛒 *Items*
 ━━━━━━━━━━━━━━━━━━━━━━━━
 ${items}
 ━━━━━━━━━━━━━━━━━━━━━━━━
-${instructionsSection}
-💰 *Order Summary*
-Subtotal: ₹${total}
-Total: ₹${total}
+${instructionsSection}${locationSection}
+💰 *Payment:* Cash
+*Total: ₹${total}*
 
 ✅ Ready to confirm this order!`;
 
     return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
-  }, [bowl, orderType, customerInfo, specialInstructions, calculateTotal, APP_NAME]);
+  }, [bowl, orderType, customerInfo, specialInstructions, calculateTotal]);
 
   /** 🏷️ Apply promo code */
   const applyPromo = useCallback((subtotal, promoCode) => {

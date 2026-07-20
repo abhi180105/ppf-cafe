@@ -44,7 +44,7 @@ export default function Footer() {
             <h4 className={styles.sectionTitle}>🌐 Follow Us</h4>
             <div className={styles.socialLinks}>
               <a 
-                href="https://www.instagram.com/prime_patties_and_foods?igsh=MW5yeTJ5azB5M3p6dA==" 
+                href="https://www.instagram.com/ppf.cafe.126" 
                 target="_blank" 
                 rel="noopener noreferrer"
                 className={styles.socialLink}
@@ -72,16 +72,6 @@ export default function Footer() {
         </div>
 
         <div className={styles.credits}>
-          <p className={styles.creditText}>
-            Crafted with ❤️ by <a 
-              href="https://www.instagram.com/abhi0105yadav?igsh=ZXg1djcyYmdkdmNr" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className={styles.developerLink}
-            >
-              <strong>Abhishek Yadav</strong>
-            </a>
-          </p>
           <p className={styles.copyright}>
             © {year} Prime Patties & Foods. All Rights Reserved.
           </p>

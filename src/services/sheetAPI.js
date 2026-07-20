@@ -132,6 +132,36 @@ export async function addReview({ name, rating, comment }) {
   }
 }
 
+export async function placeOrder(orderData) {
+  if (!BASE_URL || BASE_URL === "YOUR_GOOGLE_APPS_SCRIPT_URL_HERE") {
+    console.warn("Mock mode - order not actually saved to sheet");
+    return { success: true, orderId: `PPF-${Date.now().toString().slice(-6)}`, message: "Order placed successfully!" };
+  }
+
+  try {
+    const res = await fetch(BASE_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" }, // text/plain to avoid CORS preflight if needed
+      body: JSON.stringify({ action: "placeorder", data: orderData }),
+      credentials: "omit"
+    });
+
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+    }
+
+    const result = await res.json();
+    if (result.error) {
+      throw new Error(result.error);
+    }
+    
+    return result;
+  } catch (err) {
+    console.error("Place Order Error:", err);
+    throw err;
+  }
+}
+
 export default {
   getMenu,
   getCombos,
@@ -139,5 +169,6 @@ export default {
   getReviews,
   getStatus,
   addReview,
+  placeOrder,
 };
 

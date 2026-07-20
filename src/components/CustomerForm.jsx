@@ -4,25 +4,27 @@ import { CafeContext } from "../context/CafeContext";
 import { sanitizeString } from "../utils/sanitize";
 import styles from "../styles/components/CustomerForm.module.css";
 
-function CustomerForm() {
+function CustomerForm({ showErrors = false }) {
   const { orderType, customerInfo, setCustomerInfo } = useContext(CafeContext);
   const [name, setName] = useState(customerInfo?.name || "");
+  const [phone, setPhone] = useState(customerInfo?.phone || "");
   const [address, setAddress] = useState(customerInfo?.address || "");
   const [errors, setErrors] = useState({});
 
   useEffect(() => {
     setName(customerInfo?.name || "");
+    setPhone(customerInfo?.phone || "");
     setAddress(customerInfo?.address || "");
   }, [customerInfo]);
 
   // Debounce context updates to prevent re-rendering on every keystroke
   useEffect(() => {
     const timer = setTimeout(() => {
-      setCustomerInfo({ name, address });
+      setCustomerInfo({ name, phone, address });
     }, 500); // Update context only after user stops typing for 500ms
     
     return () => clearTimeout(timer);
-  }, [name, address, setCustomerInfo]);
+  }, [name, phone, address, setCustomerInfo]);
 
   const handleNameChange = useCallback((e) => {
     const value = sanitizeString(e.target.value, 100);
@@ -31,6 +33,14 @@ function CustomerForm() {
       setErrors(prev => ({ ...prev, name: null }));
     }
   }, [errors.name]);
+
+  const handlePhoneChange = useCallback((e) => {
+    const value = sanitizeString(e.target.value, 20).replace(/[^\d+]/g, '');
+    setPhone(value);
+    if (errors.phone && value.length >= 10) {
+      setErrors(prev => ({ ...prev, phone: null }));
+    }
+  }, [errors.phone]);
 
   const handleAddressChange = useCallback((e) => {
     const value = sanitizeString(e.target.value, 300);
@@ -45,12 +55,23 @@ function CustomerForm() {
     if (!name.trim()) {
       newErrors.name = "Name is required";
     }
+    if (!phone.trim() || phone.length < 10) {
+      newErrors.phone = "Valid phone number is required";
+    }
     if (orderType === "delivery" && !address.trim()) {
       newErrors.address = "Address is required for delivery";
     }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
-  }, [name, address, orderType]);
+  }, [name, phone, address, orderType]);
+
+  useEffect(() => {
+    if (showErrors) {
+      validate();
+    } else {
+      setErrors({});
+    }
+  }, [showErrors, validate]);
 
   const needsAddress = orderType === "delivery";
 
@@ -75,6 +96,27 @@ function CustomerForm() {
         {errors.name && (
           <p id="name-error" className={styles.errorText} role="alert">
             {errors.name}
+          </p>
+        )}
+      </div>
+
+      <div className={styles.formGroup}>
+        <label htmlFor="customerPhone" className={styles.label}>
+          Phone <span className={styles.required}>*</span>
+        </label>
+        <input
+          id="customerPhone"
+          type="tel"
+          value={phone}
+          onChange={handlePhoneChange}
+          placeholder="Enter your phone number"
+          className={`${styles.input} ${errors.phone ? styles.inputError : ''}`}
+          aria-invalid={!!errors.phone}
+          aria-describedby={errors.phone ? "phone-error" : undefined}
+        />
+        {errors.phone && (
+          <p id="phone-error" className={styles.errorText} role="alert">
+            {errors.phone}
           </p>
         )}
       </div>

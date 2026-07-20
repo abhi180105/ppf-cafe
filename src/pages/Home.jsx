@@ -12,7 +12,6 @@ import ReviewSystem from "../components/ReviewSystem";
 import FeedbackSystem from "../components/FeedbackSystem";
 import OrderTypeTabs from "../components/OrderTypeTabs";
 import BowlBar from "../components/BowlBar";
-import FloatingWhatsAppButton from "../components/FloatingWhatsAppButton";
 import Footer from "../components/Footer";
 import styles from "../styles/pages/Home.module.css";
 
@@ -233,9 +232,6 @@ export default function Home({ showBowl, setShowBowl }) {
 
       {/* 🛒 Bowl Bar (bottom) */}
       <BowlBar onOpen={() => setShowBowl(true)} />
-
-      {/* 💬 Floating WhatsApp Button */}
-      <FloatingWhatsAppButton />
 
       {/* 🪶 Footer */}
       <Footer />

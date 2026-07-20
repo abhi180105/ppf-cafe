@@ -45,12 +45,32 @@
   line-height: 1.6;
 }
 
-.items {
+.scrollContent {
   flex: 1;
-  max-height: 50vh;
   overflow-y: auto;
   padding-right: 0.5rem;
   margin-bottom: 0.8rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.scrollContent::-webkit-scrollbar {
+  width: 6px;
+}
+
+.scrollContent::-webkit-scrollbar-track {
+  background: var(--background-alt);
+  border-radius: var(--radius-full);
+}
+
+.scrollContent::-webkit-scrollbar-thumb {
+  background: var(--primary-light);
+  border-radius: var(--radius-full);
+}
+
+.items {
+  display: flex;
+  flex-direction: column;
 }
 
 /* Special Instructions */
@@ -101,19 +121,6 @@
   margin-top: 0.25rem;
 }
 
-.items::-webkit-scrollbar {
-  width: 6px;
-}
-
-.items::-webkit-scrollbar-track {
-  background: var(--background-alt);
-  border-radius: var(--radius-full);
-}
-
-.items::-webkit-scrollbar-thumb {
-  background: var(--primary-light);
-  border-radius: var(--radius-full);
-}
 
 .itemRow {
   display: flex;
@@ -142,7 +149,7 @@
   margin: 0.3rem 0 0 0;
   font-size: 1.05rem;
   color: var(--primary);
-  font-weight: 700;
+  font-weight: 800;
 }
 
 .itemCustomizations {
@@ -160,14 +167,15 @@
   padding: 0.4rem 0.8rem;
   border-radius: var(--radius-full);
   border: 1px solid var(--border-light);
+  flex-shrink: 0;
 }
 
 .qtyBtn {
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  border: none;
-  background: var(--surface);
+  border: 1px solid var(--border-light);
+  background: var(--surface-elevated);
   cursor: pointer;
   font-size: 1.2rem;
   font-weight: 700;
@@ -261,16 +269,84 @@
 
 .orderBtn.disabled,
 .orderBtn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+  opacity: 0.65;
   background: var(--text-tertiary);
-  pointer-events: none;
 }
 
 .orderBtn.disabled:hover,
 .orderBtn:disabled:hover {
   transform: none;
   box-shadow: var(--shadow-sm);
+}
+
+.dateChips {
+  display: flex;
+  gap: 0.8rem;
+  margin-bottom: 0.8rem;
+}
+
+.dateChip {
+  flex: 1;
+  padding: 0.6rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-primary);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transition: all var(--transition-base);
+  cursor: pointer;
+}
+
+.dateChip.activeChip {
+  background: var(--primary);
+  border-color: var(--primary-dark);
+  color: #fff;
+  box-shadow: var(--shadow-sm);
+}
+
+.chipTitle {
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+.chipSub {
+  font-size: 0.75rem;
+  opacity: 0.8;
+}
+
+.customTimePicker {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.8rem;
+}
+
+.timeSelect {
+  flex: 1;
+  padding: 0.6rem;
+  border: 2px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 1rem;
+  font-family: var(--font-body);
+  color: var(--text-primary);
+  background: var(--surface);
+  text-align: center;
+  cursor: pointer;
+  outline: none;
+  transition: all var(--transition-base);
+}
+
+.timeSelect:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(193, 122, 74, 0.1);
+}
+
+.timeColon {
+  font-weight: 700;
+  font-size: 1.2rem;
+  color: var(--text-primary);
 }
 
 .closeBtn {
@@ -321,9 +397,6 @@
     font-size: 1rem;
   }
 
-  .items {
-    max-height: 45vh;
-  }
 
   .itemRow {
     padding: 0.6rem 0;
@@ -469,4 +542,76 @@
   .minOrderWarning {
     font-size: 0.75rem;
   }
+}
+
+/* Location and Schedule UI */
+.locationCard, .scheduleCard {
+  background: var(--background-alt);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  padding: 1rem;
+  margin-bottom: 0.8rem;
+}
+
+.locationTitle {
+  font-size: 1rem;
+  font-weight: 700;
+  margin-bottom: 0.8rem;
+  color: var(--text-primary);
+}
+
+.locationContent p, .locationSuccess p, .locationError p {
+  font-size: 0.9rem;
+  margin-bottom: 0.5rem;
+  color: var(--text-secondary);
+}
+
+.locationSmallText {
+  font-size: 0.8rem !important;
+  color: var(--text-tertiary) !important;
+}
+
+.locationBtn, .locationSwitchBtn {
+  background: var(--primary);
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.85rem;
+  transition: opacity 0.2s;
+}
+
+.locationBtn:hover, .locationSwitchBtn:hover {
+  opacity: 0.9;
+}
+
+.locationSuccess p:first-child {
+  color: #2e7d32;
+  font-weight: 700;
+}
+
+.locationError p:first-child {
+  color: #d32f2f;
+  font-weight: 600;
+}
+
+.orderModeToggle {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 0.8rem;
+}
+
+.radioLabel {
+  font-size: 0.9rem;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  cursor: pointer;
+}
+
+.scheduleSelectors select {
+  width: 100%;
 }

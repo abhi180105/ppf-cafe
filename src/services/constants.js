@@ -4,6 +4,13 @@ export const DEFAULT_TIMES = {
   CLOSE: "23:00"
 };
 
+export const CAFE_LOCATION = {
+  lat: 28.5418728, // PPF Cafe actual latitude
+  lng: 77.3357723  // PPF Cafe actual longitude
+};
+
+export const DELIVERY_RADIUS_KM = 2;
+
 export const ORDER_TYPES = {
   DINE_IN: "dine-in",
   TAKEAWAY: "takeaway", 
