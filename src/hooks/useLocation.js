@@ -56,7 +56,7 @@ export const useLocation = () => {
           setLocationError(`Unable to retrieve your location. (Error: ${error.message})`);
         }
       },
-      // Using enableHighAccuracy: false makes it much more reliable on desktops
+      // Falling back to enableHighAccuracy: false. Some devices instantly deny true if GPS is off.
       { enableHighAccuracy: false, timeout: 15000, maximumAge: 0 }
     );
   }, []);
