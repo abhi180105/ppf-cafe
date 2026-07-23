@@ -120,7 +120,6 @@ export async function addReview({ name, rating, comment }) {
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify(payload),
       credentials: 'omit',
-      redirect: 'follow',
     });
 
     if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
@@ -164,7 +163,6 @@ export async function placeOrder(orderData) {
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({ action: 'placeorder', apiKey: API_SECRET, data: sanitized }),
       credentials: 'omit',
-      redirect: 'follow',
     });
 
     if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
