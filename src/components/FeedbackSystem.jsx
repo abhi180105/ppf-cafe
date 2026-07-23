@@ -26,8 +26,7 @@ function FeedbackSystem() {
       const subject = `[${type.toUpperCase()}] Message from ${name}`;
       const body = `Name: ${name}\nEmail: ${email || 'Not provided'}\nType: ${type}\n\nMessage:\n${message}`;
       const mailtoLink = `mailto:${devEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-      
-      window.location.href = mailtoLink;
+      window.open(mailtoLink, '_self');
       
       setStatusMsg("Opening your email client... 📧");
       setName("");

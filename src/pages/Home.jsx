@@ -99,13 +99,14 @@ export default function Home({ showBowl, setShowBowl }) {
     setExpandedCategories(prev => ({ ...prev, [cat]: !prev[cat] }));
   }, []);
 
-  // Auto-expand first category on mount
+  // Auto-expand first category on mount only
   useEffect(() => {
     if (Object.keys(byCategory).length > 0 && Object.keys(expandedCategories).length === 0) {
       const firstCategory = Object.keys(byCategory)[0];
       setExpandedCategories({ [firstCategory]: true });
     }
-  }, [byCategory, expandedCategories]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [byCategory]);
 
   return (
     <div className={styles.container}>
@@ -199,7 +200,15 @@ export default function Home({ showBowl, setShowBowl }) {
           ) : (
             Object.keys(byCategory).map((cat) => (
               <div key={cat} className={styles.categoryBlock}>
-                <div className={styles.categoryHeader} onClick={() => toggleCategory(cat)}>
+                <div
+                  className={styles.categoryHeader}
+                  onClick={() => toggleCategory(cat)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && toggleCategory(cat)}
+                  aria-expanded={!!expandedCategories[cat]}
+                  aria-controls={`category-${cat}`}
+                >
                   <h3 className={styles.categoryTitle}>{cat}</h3>
                   <button className={styles.expandBtn}>
                     {expandedCategories[cat] ? "−" : "+"}
@@ -207,9 +216,9 @@ export default function Home({ showBowl, setShowBowl }) {
                 </div>
 
                 {expandedCategories[cat] && (
-                  <div className={styles.grid}>
-                    {byCategory[cat].map((item, idx) => (
-                      <MenuItemCard key={idx} item={item} />
+                  <div className={styles.grid} id={`category-${cat}`}>
+                    {byCategory[cat].map((item) => (
+                      <MenuItemCard key={item.id} item={item} />
                     ))}
                   </div>
                 )}

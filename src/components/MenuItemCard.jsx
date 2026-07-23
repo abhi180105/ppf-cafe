@@ -99,9 +99,12 @@ function MenuItemCard({ item }) {
 
 // Memoize to prevent unnecessary re-renders
 export default memo(MenuItemCard, (prevProps, nextProps) => {
-  // Only re-render if item changes
-  return prevProps.item?.id === nextProps.item?.id &&
-         prevProps.item?.name === nextProps.item?.name &&
-         prevProps.item?.dinePrice === nextProps.item?.dinePrice &&
-         prevProps.item?.deliveryPrice === nextProps.item?.deliveryPrice;
+  return (
+    prevProps.item?.id === nextProps.item?.id &&
+    prevProps.item?.name === nextProps.item?.name &&
+    prevProps.item?.dinePrice === nextProps.item?.dinePrice &&
+    prevProps.item?.deliveryPrice === nextProps.item?.deliveryPrice &&
+    prevProps.item?.availability === nextProps.item?.availability &&
+    prevProps.item?.deliverable === nextProps.item?.deliverable
+  );
 });

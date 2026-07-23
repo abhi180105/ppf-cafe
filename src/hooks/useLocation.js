@@ -20,61 +20,43 @@ export const useLocation = () => {
   const [locationError, setLocationError] = useState(null);
 
   const requestLocation = useCallback(() => {
-    console.log("[Geolocation Debug] requestLocation triggered (Button Clicked)");
-
-    if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-      console.warn(`[Geolocation Debug] Not on HTTPS. Current protocol: ${window.location.protocol}. Geolocation will likely fail.`);
-    }
-
     if (!navigator.geolocation) {
-      console.error("[Geolocation Debug] navigator.geolocation is undefined");
       setLocationStatus("error");
       setLocationError("Geolocation is not supported by your browser");
       return;
     }
 
-    // Fire & forget permission logging (avoids async/await which strips transient user activation)
-    if (navigator.permissions && navigator.permissions.query) {
-      navigator.permissions.query({ name: 'geolocation' })
-        .then(res => console.log("[Geolocation Debug] Initial permission state:", res.state))
-        .catch(err => console.log("[Geolocation Debug] Permissions query failed:", err));
-    }
-
     setLocationStatus("requesting");
     setLocationError(null);
 
-    console.log("[Geolocation Debug] Calling navigator.geolocation.getCurrentPosition...");
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        console.log("[Geolocation Debug] Success! Coordinates received:", position.coords.latitude, position.coords.longitude);
         const lat = position.coords.latitude;
         const lng = position.coords.longitude;
         const distance = calculateDistance(lat, lng, CAFE_LOCATION.lat, CAFE_LOCATION.lng);
-        console.log("[Geolocation Debug] Distance calculated:", distance, "km");
-        
+
         setLocationData({
           lat,
           lng,
           distance,
-          withinRadius: distance <= DELIVERY_RADIUS_KM
+          withinRadius: distance <= DELIVERY_RADIUS_KM,
         });
         setLocationStatus("success");
       },
       (error) => {
-        console.error("[Geolocation Debug] Error received! Code:", error.code, "Message:", error.message);
         setLocationData(null);
         if (error.code === error.PERMISSION_DENIED) {
           setLocationStatus("denied");
           setLocationError("Location permission denied. Please enable it in your browser settings.");
         } else if (error.code === error.POSITION_UNAVAILABLE) {
           setLocationStatus("error");
-          setLocationError(`Position unavailable (${error.message}). Your device's GPS may be turned off or unable to get a signal.`);
+          setLocationError("Position unavailable. Your device's GPS may be off or unable to get a signal.");
         } else if (error.code === error.TIMEOUT) {
           setLocationStatus("error");
-          setLocationError("Location request timed out. Please try again or check your connection.");
+          setLocationError("Location request timed out. Please try again.");
         } else {
           setLocationStatus("error");
-          setLocationError(`Unable to retrieve your location. (Error: ${error.message})`);
+          setLocationError("Unable to retrieve your location. Please try again.");
         }
       },
       { enableHighAccuracy: false, timeout: 15000, maximumAge: 0 }

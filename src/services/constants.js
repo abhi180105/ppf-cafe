@@ -13,7 +13,7 @@ export const DELIVERY_RADIUS_KM = 2;
 
 export const ORDER_TYPES = {
   DINE_IN: "dine-in",
-  TAKEAWAY: "takeaway", 
+  TAKEAWAY: "takeaway",
   DELIVERY: "delivery"
 };
 
@@ -25,3 +25,6 @@ export const STORAGE_KEYS = {
   ORDER_COUNT: "orderCount",
   SPECIAL_INSTRUCTIONS: "specialInstructions"
 };
+
+/** Persists non-sensitive checkout UI state across page refreshes. */
+export const CHECKOUT_STORAGE_KEY = "ppf_checkout_state";

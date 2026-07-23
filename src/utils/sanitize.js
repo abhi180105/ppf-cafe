@@ -1,85 +1,80 @@
 // src/utils/sanitize.js
-// Utility functions for input sanitization and validation
 
 /**
- * Sanitize string input to prevent XSS attacks
- * @param {string} input - The input string to sanitize
- * @param {number} maxLength - Maximum allowed length
- * @returns {string} - Sanitized string
+ * Sanitize string input to prevent XSS and formula injection.
+ * Strips leading formula characters that Google Sheets would execute.
  */
 export function sanitizeString(input, maxLength = 500) {
   if (typeof input !== 'string') return '';
-  
-  return input
+
+  let sanitized = input
     .slice(0, maxLength)
     .replace(/[<>]/g, '');
+
+  return sanitized;
 }
 
 /**
- * Sanitize HTML to prevent XSS
- * @param {string} html - The HTML string to sanitize
- * @returns {string} - Sanitized HTML
+ * Sanitize a value before writing to Google Sheets.
+ * Prevents formula injection (=, +, -, @, TAB, CR at start of cell).
  */
-export function sanitizeHTML(html) {
-  if (typeof html !== 'string') return '';
-  
-  const div = document.createElement('div');
-  div.textContent = html;
-  return div.innerHTML;
+export function sanitizeForSheet(input, maxLength = 500) {
+  if (typeof input !== 'string') return String(input ?? '');
+
+  let sanitized = input.trim().slice(0, maxLength);
+
+  // Strip leading characters that trigger formula execution in Sheets
+  sanitized = sanitized.replace(/^[=+\-@\t\r|%]+/, '');
+
+  // Remove null bytes and other control characters
+  sanitized = sanitized.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
+
+  return sanitized;
 }
 
 /**
- * Validate and sanitize phone number
- * @param {string} phone - Phone number to validate
- * @returns {string|null} - Sanitized phone or null if invalid
+ * Sanitize user input for inclusion in a WhatsApp message.
+ * Escapes WhatsApp markdown characters to prevent formatting injection.
+ */
+export function sanitizeForWhatsApp(input) {
+  if (typeof input !== 'string') return '';
+  return input
+    .replace(/[*_~`]/g, '')
+    .replace(/[\x00-\x1F\x7F]/g, '')
+    .trim();
+}
+
+/**
+ * Validate and sanitize phone number — digits only, 10–15 chars.
  */
 export function sanitizePhone(phone) {
   if (typeof phone !== 'string') return null;
-  
   const cleaned = phone.replace(/\D/g, '');
-  
-  if (cleaned.length >= 10 && cleaned.length <= 15) {
-    return cleaned;
-  }
-  
-  return null;
+  return cleaned.length >= 10 && cleaned.length <= 15 ? cleaned : null;
 }
 
 /**
- * Validate email format
- * @param {string} email - Email to validate
- * @returns {boolean} - True if valid email format
+ * Validate email format.
  */
 export function isValidEmail(email) {
   if (typeof email !== 'string') return false;
-  
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return emailRegex.test(email);
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
 /**
- * Sanitize number input
- * @param {any} value - Value to sanitize
- * @param {number} min - Minimum allowed value
- * @param {number} max - Maximum allowed value
- * @returns {number} - Sanitized number
+ * Sanitize a numeric value within a safe range.
  */
 export function sanitizeNumber(value, min = 0, max = Number.MAX_SAFE_INTEGER) {
   const num = Number(value);
-  
   if (isNaN(num)) return min;
-  
   return Math.max(min, Math.min(max, num));
 }
 
 /**
- * Validate URL format
- * @param {string} url - URL to validate
- * @returns {boolean} - True if valid URL
+ * Validate URL format.
  */
 export function isValidURL(url) {
   if (typeof url !== 'string') return false;
-  
   try {
     new URL(url);
     return true;

@@ -9,6 +9,7 @@ import {
   addReview,
 } from "../services/sheetAPI";
 import { DEFAULT_TIMES, STORAGE_KEYS } from "../services/constants";
+import { sanitizeForWhatsApp } from "../utils/sanitize";
 
 // Split contexts for better performance
 // DataContext: Static/rarely changing data (menu, combos, promos, reviews, status)
@@ -53,8 +54,6 @@ export const CafeProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [lastUpdated, setLastUpdated] = useState(null);
-
-  const APP_NAME = import.meta.env.VITE_APP_NAME || "Prime Patties & Foods";
 
   const loadMenu = useCallback(async () => {
     try {
@@ -199,51 +198,32 @@ export const CafeProvider = ({ children }) => {
 
   // 🧮 Add item to bowl
   const addToBowl = useCallback((item) => {
-    console.log("addToBowl called with:", item);
     setBowl((prev) => {
       const safePrev = Array.isArray(prev) ? prev : [];
-      console.log("Current bowl before adding:", safePrev);
       const existingIndex = safePrev.findIndex((b) => b.id === item.id && !b.isCombo);
-
-      let updated;
       if (existingIndex >= 0) {
-        updated = [...safePrev];
+        const updated = [...safePrev];
         updated[existingIndex] = { ...updated[existingIndex], quantity: updated[existingIndex].quantity + 1 };
-        console.log("Updated existing item quantity");
-      } else {
-        updated = [...safePrev, { ...item, quantity: 1, isCombo: false }];
-        console.log("Added new item to bowl");
+        return updated;
       }
-      console.log("Bowl after adding:", updated);
-      return updated;
+      return [...safePrev, { ...item, quantity: 1, isCombo: false }];
     });
   }, []);
 
   // ➖ Remove item from bowl
   const removeFromBowl = useCallback((itemId) => {
-    console.log("removeFromBowl called with:", itemId);
     setBowl((prev) => {
       const safePrev = Array.isArray(prev) ? prev : [];
-      console.log("Current bowl before removal:", safePrev);
-      const updated = safePrev
-        .map((b) => {
-          if (b.id === itemId) {
-            return { ...b, quantity: Math.max(0, b.quantity - 1) };
-          }
-          return b;
-        })
+      return safePrev
+        .map((b) => b.id === itemId ? { ...b, quantity: Math.max(0, b.quantity - 1) } : b)
         .filter((b) => b.quantity > 0);
-      console.log("Bowl after removal:", updated);
-      return updated;
     });
   }, []);
 
   // ❌ Clear bowl
   const clearBowl = useCallback(() => {
-    console.log("clearBowl called");
     setBowl([]);
     localStorage.removeItem(STORAGE_KEYS.BOWL);
-    console.log("Bowl cleared");
   }, []);
 
   // 💰 Calculate total based on order type
@@ -261,34 +241,24 @@ export const CafeProvider = ({ children }) => {
   // 🎁 Add combo to bowl
   const addComboToBowl = useCallback((combo) => {
     if (!combo || !combo.id) return;
-    
-    console.log("addComboToBowl called with:", combo);
-    
     setBowl((prev) => {
       const safePrev = Array.isArray(prev) ? prev : [];
       const existingIndex = safePrev.findIndex((b) => b.id === combo.id && b.isCombo === true);
-      
-      let updated;
       if (existingIndex >= 0) {
-        updated = [...safePrev];
+        const updated = [...safePrev];
         updated[existingIndex] = { ...updated[existingIndex], quantity: updated[existingIndex].quantity + 1 };
-        console.log("Updated existing combo quantity");
-      } else {
-        const comboItem = {
-          id: combo.id,
-          name: combo.name,
-          description: combo.description,
-          dinePrice: combo.comboPrice,
-          deliveryPrice: combo.comboPrice,
-          quantity: 1,
-          isCombo: true,
-          comboItems: combo.items
-        };
-        updated = [...safePrev, comboItem];
-        console.log("Added new combo to bowl");
+        return updated;
       }
-      console.log("Bowl after combo adding:", updated);
-      return updated;
+      return [...safePrev, {
+        id: combo.id,
+        name: combo.name,
+        description: combo.description,
+        dinePrice: combo.comboPrice,
+        deliveryPrice: combo.comboPrice,
+        quantity: 1,
+        isCombo: true,
+        comboItems: combo.items,
+      }];
     });
   }, []);
 
@@ -314,14 +284,10 @@ export const CafeProvider = ({ children }) => {
 
     if (!phone || safeBowl.length === 0 || !orderType) return null;
 
-    // Format order type display
-    const orderTypeDisplay = orderType === "dine-in" ? "Dine-in" : 
-                            orderType === "takeaway" ? "Takeaway" : "Delivery";
-
-    const sanitizedName = (customerInfo?.name || "Not provided").replace(/[*_~`]/g, '');
-    const sanitizedPhone = (customerInfo?.phone || "Not provided").replace(/[*_~`]/g, '');
-    const sanitizedAddress = (customerInfo?.address || "Not provided").replace(/[*_~`]/g, '');
-    const sanitizedInstructions = specialInstructions.replace(/[*_~`]/g, '');
+    const sanitizedName = sanitizeForWhatsApp(customerInfo?.name || "Not provided");
+    const sanitizedPhone = sanitizeForWhatsApp(customerInfo?.phone || "Not provided");
+    const sanitizedAddress = sanitizeForWhatsApp(customerInfo?.address || "Not provided");
+    const sanitizedInstructions = sanitizeForWhatsApp(specialInstructions);
 
     const { schedule, location } = extraData;
 
@@ -401,17 +367,17 @@ ${instructionsSection}${locationSection}
       case 'fixed':
         discount = promo.discountValue;
         break;
-      case 'bogo':
-        // For BOGO, calculate discount based on cheapest item
+      case 'bogo': {
         const safeBowl = Array.isArray(bowl) ? bowl : [];
         if (safeBowl.length >= 2) {
           const prices = safeBowl.map(item => {
             const price = orderType === "dine-in" ? item.dinePrice : item.deliveryPrice;
             return price * item.quantity;
           }).sort((a, b) => a - b);
-          discount = prices[0]; // Discount equals cheapest item
+          discount = prices[0];
         }
         break;
+      }
       default:
         discount = 0;
     }

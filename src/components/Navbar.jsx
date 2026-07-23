@@ -39,7 +39,7 @@ function Navbar({ onBowlClick }) {
 
   return (
     <nav className={`${styles.navbar} ${!isVisible ? styles.hidden : ''}`}>
-      <div className={styles.logo} onClick={() => scrollToSection('home')} role="button" tabIndex={0} onKeyPress={(e) => e.key === 'Enter' && scrollToSection('home')}>
+      <div className={styles.logo} onClick={() => scrollToSection('home')} role="button" tabIndex={0} onKeyDown={(e) => e.key === 'Enter' && scrollToSection('home')}>
         <img src="/ppflogo.png" alt="Prime Patties & Foods Logo" className={styles.logoImage} />
         <span className={styles.logoText}>Prime Patties & Foods</span>
       </div>

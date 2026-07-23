@@ -25,9 +25,7 @@ function ReviewSystem() {
 
     setSending(true);
     try {
-      console.log("Submitting review:", { name: name.trim(), rating, comment: comment.trim() || "No comment" });
       const success = await submitReview(name.trim(), rating, comment.trim() || "No comment");
-      console.log("Review submission result:", success);
       setMessage(success ? "Thanks for your feedback! ❤️" : "Something went wrong. Try again.");
       if (success) {
         setName("");
@@ -35,7 +33,6 @@ function ReviewSystem() {
         setRating(5);
       }
     } catch (err) {
-      console.error("Submit error:", err);
       setMessage(`Error: ${err.message}`);
     } finally {
       setSending(false);
@@ -97,7 +94,7 @@ function ReviewSystem() {
           <p className={styles.noReview}>No reviews yet. Be the first! 🌟</p>
         ) : (
           reviews.map((r, i) => (
-            <div key={i} className={styles.reviewCard}>
+            <div key={r.id || `review-${i}`} className={styles.reviewCard}>
               <p className={styles.reviewText}>{r.comment}</p>
               <p className={styles.reviewMeta}>
                 ⭐ {r.rating}/5 — <strong>{r.name}</strong>
