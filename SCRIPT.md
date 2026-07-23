@@ -200,6 +200,38 @@ function addReview(body) {
 }
 
 // ---------------------------------------------------------------------------
+// Time normalizer — Google Sheets returns time cells as Date objects or
+// decimal fractions (e.g. 0.458 = 11:00), never as "HH:MM" strings.
+// This converts any format to a safe "HH:MM" string.
+// ---------------------------------------------------------------------------
+function normalizeTime(value, defaultHour) {
+  defaultHour = defaultHour || 0;
+
+  // Already a proper string like "10:00" or "23:00"
+  if (typeof value === 'string' && value.indexOf(':') !== -1) {
+    return value;
+  }
+
+  // Date object (most common — Sheets stores time as a Date at epoch day)
+  if (value && typeof value.getHours === 'function') {
+    var h = value.getHours();
+    var m = value.getMinutes();
+    return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
+  }
+
+  // Fractional day number (0.0 = 00:00, 0.5 = 12:00, 1.0 = 24:00)
+  if (typeof value === 'number' && value >= 0 && value <= 1) {
+    var totalMinutes = Math.round(value * 24 * 60);
+    var hours = Math.floor(totalMinutes / 60);
+    var minutes = totalMinutes % 60;
+    return String(hours).padStart(2, '0') + ':' + String(minutes).padStart(2, '0');
+  }
+
+  // Fallback
+  return String(defaultHour).padStart(2, '0') + ':00';
+}
+
+// ---------------------------------------------------------------------------
 // Status API
 // ---------------------------------------------------------------------------
 function getStatus() {
@@ -207,17 +239,17 @@ function getStatus() {
   if (!rows.length) {
     return {
       isOpen: true,
-      openTime: DEFAULT_OPEN_HOUR + ':00',
+      openTime:  DEFAULT_OPEN_HOUR  + ':00',
       closeTime: DEFAULT_CLOSE_HOUR + ':00',
       timezone: 'Asia/Kolkata'
     };
   }
   var r = rows[0];
   return {
-    isOpen: String(r.isOpen).toLowerCase() === 'true',
-    openTime:  r.openTime,
-    closeTime: r.closeTime,
-    timezone:  r.timezone
+    isOpen:    String(r.isOpen).toLowerCase() === 'true',
+    openTime:  normalizeTime(r.openTime,  DEFAULT_OPEN_HOUR),
+    closeTime: normalizeTime(r.closeTime, DEFAULT_CLOSE_HOUR),
+    timezone:  r.timezone || 'Asia/Kolkata'
   };
 }
 

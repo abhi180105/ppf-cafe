@@ -327,7 +327,17 @@ export default function BowlSidebar({ isOpen, onClose }) {
     return "Order via WhatsApp 💬";
   }, [submitState]);
 
-  const orderBtnDisabled = submitState === "loading" || submitState === "success";
+  const orderBtnDisabled = submitState === "loading";
+
+  // Auto-reset the order button 12 s after a successful submission.
+  // This gives the user time to read "✅ Order Sent!" then re-enables the
+  // button in case they want to place another order (e.g. for a friend).
+  useEffect(() => {
+    if (submitState !== "success") return;
+    const t = setTimeout(() => setSubmitState("idle"), 12000);
+    return () => clearTimeout(t);
+  }, [submitState]);
+
 
   // Escape key / focus management
   useEffect(() => {
@@ -478,7 +488,6 @@ export default function BowlSidebar({ isOpen, onClose }) {
                 <button
                   className={styles.clearBtn}
                   onClick={clearBowl}
-                  disabled={orderBtnDisabled}
                 >
                   Clear Bowl
                 </button>
