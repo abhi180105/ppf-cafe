@@ -82,7 +82,7 @@ export const CafeProvider = ({ children }) => {
       setMenu(menuData);
       setLastUpdated(new Date().toLocaleTimeString());
     } catch (err) {
-      console.error("Menu Fetch Error:", err.message);
+      console.warn("[PPF] Menu fetch:", err.message);
       setError(`Unable to fetch menu: ${err.message}`);
       setMenu([]);
     } finally {
@@ -98,7 +98,7 @@ export const CafeProvider = ({ children }) => {
       }
       setCombos(data.combos);
     } catch (err) {
-      console.error("Combos Fetch Error:", err.message);
+      console.warn("[PPF] Combos fetch:", err.message);
       setCombos([]);
     }
   }, []);
@@ -111,7 +111,7 @@ export const CafeProvider = ({ children }) => {
       }
       setPromos(data.promos);
     } catch (err) {
-      console.error("Promos Fetch Error:", err.message);
+      console.warn("[PPF] Promos fetch:", err.message);
       setPromos([]);
     }
   }, []);
@@ -124,7 +124,7 @@ export const CafeProvider = ({ children }) => {
       }
       setReviews(data.reviews);
     } catch (err) {
-      console.error("Reviews Fetch Error:", err.message);
+      console.warn("[PPF] Reviews fetch:", err.message);
       setReviews([]);
     }
   }, []);
@@ -153,7 +153,7 @@ export const CafeProvider = ({ children }) => {
         closeTime: parseSheetTime(data.closeTime, import.meta.env.VITE_DEFAULT_CLOSE_TIME || DEFAULT_TIMES.CLOSE)
       });
     } catch (err) {
-      console.error("Status Fetch Error:", err.message);
+      console.warn("[PPF] Status fetch:", err.message);
       setStatus({
         isOpen: true,
         openTime: import.meta.env.VITE_DEFAULT_OPEN_TIME || DEFAULT_TIMES.OPEN,
@@ -192,7 +192,7 @@ export const CafeProvider = ({ children }) => {
 
   useEffect(() => {
     Promise.all([loadMenu(), loadStatus(), loadReviews(), loadCombos(), loadPromos()]).catch((err) => {
-      console.error("Initial load error:", err.message);
+      console.warn("[PPF] Initial load:", err.message);
     });
   }, [loadMenu, loadStatus, loadReviews, loadCombos, loadPromos]);
 
@@ -273,7 +273,7 @@ export const CafeProvider = ({ children }) => {
       await loadReviews();
       return true;
     } catch (err) {
-      console.error("Submit review error:", err.message);
+      console.warn("[PPF] Submit review:", err.message);
       return false;
     }
   }, [loadReviews]);

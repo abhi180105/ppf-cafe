@@ -275,12 +275,26 @@ export default function BowlSidebar({ isOpen, onClose }) {
           });
         }
       } catch (err) {
-        console.error("Place order error:", err.message);
+        console.warn("[PPF] Place order error:", err.message);
+
+        // Distinguish network/CORS failures from server-returned validation errors.
+        // TypeError means the fetch itself didn't complete (offline, CORS block, etc.).
+        // Any other Error carries a meaningful message from GAS (e.g. "Delivery not
+        // available within 2 km") — surface it directly so the user knows what to fix.
+        const isNetworkError =
+          err instanceof TypeError ||
+          err.message.toLowerCase().includes("failed to fetch") ||
+          err.message.toLowerCase().includes("network") ||
+          err.message.toLowerCase().includes("cors");
+
         setToast({
-          message: "Failed to place order. Please check your connection and try again.",
+          message: isNetworkError
+            ? "Could not reach the server. Please check your connection and try again."
+            : err.message || "Failed to place order. Please try again.",
           type: "error",
         });
-        // ── Re-enable button on error ──────────────────────────────────
+
+        // Re-enable button so the user can retry
         setSubmitState("error");
       }
     },

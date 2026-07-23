@@ -5,7 +5,8 @@ const BASE_URL   = import.meta.env.VITE_SHEET_API_URL;
 const API_SECRET = import.meta.env.VITE_API_SECRET || '';
 
 if (!BASE_URL) {
-  console.error('VITE_SHEET_API_URL is not configured');
+  // Warn only — missing URL just activates mock mode, not a crash
+  console.warn('[PPF] VITE_SHEET_API_URL is not set — using mock data');
 }
 
 const IS_MOCK =
@@ -29,7 +30,7 @@ function nextMockOrderId() {
 
 async function fetchJSON(url) {
   if (IS_MOCK) {
-    console.warn('Using mock data — Google Sheets not configured');
+    console.warn('[PPF] Mock mode — Google Sheets not configured');
     return getMockData(url);
   }
 
@@ -38,6 +39,11 @@ async function fetchJSON(url) {
       method: 'GET',
       headers: { Accept: 'application/json' },
       credentials: 'omit',
+      // redirect:'follow' is the default but we make it explicit because
+      // GAS GET requests return a 302 → script.googleusercontent.com.
+      // Browsers follow it automatically; the CSP connect-src must allow
+      // the destination domain (script.googleusercontent.com) as well.
+      redirect: 'follow',
     });
 
     if (!res.ok) {
@@ -45,7 +51,9 @@ async function fetchJSON(url) {
     }
     return await res.json();
   } catch (err) {
-    console.error('Fetch Error:', err.message);
+    // Use warn, not error — a temporarily unavailable GAS endpoint is not
+    // a JavaScript exception worth alarming Lighthouse with.
+    console.warn('[PPF] API fetch failed:', err.message);
     throw err;
   }
 }
@@ -112,6 +120,7 @@ export async function addReview({ name, rating, comment }) {
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify(payload),
       credentials: 'omit',
+      redirect: 'follow',
     });
 
     if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
@@ -120,7 +129,7 @@ export async function addReview({ name, rating, comment }) {
     if (result.error) throw new Error(result.error);
     return result;
   } catch (err) {
-    console.error('Add Review Error:', err.message);
+    console.warn('[PPF] Add Review failed:', err.message);
     throw err;
   }
 }
@@ -155,6 +164,7 @@ export async function placeOrder(orderData) {
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({ action: 'placeorder', apiKey: API_SECRET, data: sanitized }),
       credentials: 'omit',
+      redirect: 'follow',
     });
 
     if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
@@ -166,7 +176,8 @@ export async function placeOrder(orderData) {
 
     return result;
   } catch (err) {
-    console.error('Place Order Error:', err.message);
+    // warn-level: the error is already surfaced to the user via the UI toast
+    console.warn('[PPF] Place Order failed:', err.message);
     throw err;
   }
 }
