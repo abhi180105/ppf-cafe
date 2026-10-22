@@ -24,6 +24,7 @@ CREATE TABLE orders (
     delivery_latitude NUMERIC(10, 7),
     delivery_longitude NUMERIC(10, 7),
     delivery_distance_km NUMERIC(6, 3),
+    idempotency_key TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     confirmed_at TIMESTAMPTZ,
@@ -33,6 +34,9 @@ CREATE TABLE orders (
 CREATE INDEX idx_orders_phone_created ON orders(phone, created_at DESC);
 CREATE INDEX idx_orders_status_created ON orders(status, created_at DESC);
 CREATE INDEX idx_orders_source_id ON orders(source_id) WHERE source_id IS NOT NULL;
+CREATE UNIQUE INDEX idx_orders_idempotency_key ON orders(idempotency_key) WHERE idempotency_key IS NOT NULL;
+
+COMMENT ON COLUMN orders.idempotency_key IS 'Client-generated UUID for idempotent order creation';
 
 -- ============================================================
 -- ORDER ITEMS (Snapshot of menu item pricing at order time)
@@ -126,7 +130,7 @@ CREATE TABLE expenses (
     amount_paise INT NOT NULL CHECK (amount_paise > 0),
     description TEXT,
     expense_date DATE NOT NULL DEFAULT CURRENT_DATE,
-    created_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+    created_by UUID,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -144,7 +148,7 @@ CREATE TABLE refunds (
     amount_paise INT NOT NULL CHECK (amount_paise > 0),
     reason TEXT NOT NULL,
     type TEXT NOT NULL CHECK (type IN ('full', 'partial', 'void')),
-    processed_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+    processed_by UUID,
     processed_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -161,7 +165,7 @@ CREATE TABLE audit_log (
     action TEXT NOT NULL CHECK (action IN ('INSERT', 'UPDATE', 'DELETE', 'TRUNCATE')),
     old_data JSONB,
     new_data JSONB,
-    user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+    user_id UUID,
     session_id TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -169,3 +173,75 @@ CREATE TABLE audit_log (
 CREATE INDEX idx_audit_log_table_record ON audit_log(table_name, record_id);
 CREATE INDEX idx_audit_log_created ON audit_log(created_at DESC);
 CREATE INDEX idx_audit_log_user ON audit_log(user_id) WHERE user_id IS NOT NULL;
+
+-- ============================================================
+-- RATE LIMITS (API rate limiting)
+-- ============================================================
+CREATE TABLE rate_limits (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    identifier TEXT NOT NULL, -- IP address or user identifier
+    endpoint TEXT NOT NULL,   -- e.g., 'submit-review', 'place-order'
+    request_count INT NOT NULL DEFAULT 1,
+    window_start TIMESTAMPTZ NOT NULL DEFAULT now(),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE(identifier, endpoint)
+);
+
+CREATE INDEX IF NOT EXISTS idx_rate_limits_window ON rate_limits(window_start);
+CREATE INDEX IF NOT EXISTS idx_rate_limits_identifier ON rate_limits(identifier);
+
+-- Enable RLS
+ALTER TABLE rate_limits ENABLE ROW LEVEL SECURITY;
+
+-- Only service role can manage rate limits (via SECURITY DEFINER functions)
+-- No direct user policies
+
+-- Updated at trigger
+CREATE TRIGGER trg_rate_limits_updated BEFORE UPDATE ON rate_limits FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+-- Rate limit check function (SECURITY DEFINER for service role)
+CREATE OR REPLACE FUNCTION check_rate_limit(
+    p_identifier TEXT,
+    p_endpoint TEXT,
+    p_max_requests INT,
+    p_window_minutes INT
+) RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE
+    v_window_start TIMESTAMPTZ := now() - (p_window_minutes || ' minutes')::interval;
+    v_current_count INT;
+    v_remaining INT;
+BEGIN
+    -- Clean old entries
+    DELETE FROM rate_limits WHERE window_start < v_window_start;
+
+    -- Get or create rate limit record
+    INSERT INTO rate_limits (identifier, endpoint, request_count, window_start)
+    VALUES (p_identifier, p_endpoint, 1, now())
+    ON CONFLICT (identifier, endpoint) DO UPDATE SET
+        request_count = rate_limits.request_count + 1,
+        updated_at = now()
+    RETURNING request_count INTO v_current_count;
+
+    v_remaining := GREATEST(p_max_requests - v_current_count, 0);
+
+    IF v_current_count > p_max_requests THEN
+        RETURN jsonb_build_object(
+            'allowed', false,
+            'remaining', 0,
+            'reset_at', (now() + (p_window_minutes || ' minutes')::interval)::text,
+            'error', 'Rate limit exceeded. Try again later.'
+        );
+    END IF;
+
+    RETURN jsonb_build_object(
+        'allowed', true,
+        'remaining', v_remaining,
+        'limit', p_max_requests,
+        'reset_at', (now() + (p_window_minutes || ' minutes')::interval)::text
+    );
+END;
+$$;
+
+-- Revoke execute from PUBLIC (service role only via SECURITY DEFINER)
+REVOKE ALL ON FUNCTION check_rate_limit(TEXT, TEXT, INT, INT) FROM PUBLIC;

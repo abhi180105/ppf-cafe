@@ -1,8 +1,10 @@
--- Migration 008: Service Role Bypass for Netlify Functions
--- Created: 2026-10-21
--- Description: SECURITY DEFINER functions for server-side operations
+-- Migration 008: SECURITY DEFINER Functions for Netlify Functions
+-- Created: 2026-10-22
+-- Description: Fixed SECURITY DEFINER functions with proper syntax, search_path, and grants
 
--- Function to create order with full server-side validation
+-- ============================================================
+-- SECURITY DEFINER FUNCTION: create_order_server
+-- ============================================================
 CREATE OR REPLACE FUNCTION create_order_server(
     p_customer_name TEXT,
     p_phone TEXT,
@@ -15,13 +17,13 @@ CREATE OR REPLACE FUNCTION create_order_server(
     p_delivery_longitude NUMERIC,
     p_items JSONB,
     p_idempotency_key TEXT
-) RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER AS 2846265
+) RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 DECLARE
     v_order_id UUID;
     v_subtotal_paise INT := 0;
     v_discount_paise INT := 0;
     v_total_paise INT := 0;
-    v_item RECORD;
+    v_item JSONB;
     v_menu_item RECORD;
     v_combo RECORD;
     v_idempotency_exists BOOLEAN;
@@ -91,12 +93,16 @@ BEGIN
 EXCEPTION WHEN OTHERS THEN
     RETURN jsonb_build_object('success', false, 'error', 'Order creation failed: ' || SQLERRM);
 END;
-2846265;
+$$;
 
--- Function to submit review
+-- ============================================================
+-- SECURITY DEFINER FUNCTION: submit_review_server
+-- ============================================================
 CREATE OR REPLACE FUNCTION submit_review_server(
-    p_name TEXT, p_rating INT, p_comment TEXT
-) RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER AS 2846265
+    p_name TEXT,
+    p_rating INT,
+    p_comment TEXT
+) RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 BEGIN
     IF p_name IS NULL OR length(trim(p_name)) = 0 OR length(p_name) > 100 THEN
         RETURN jsonb_build_object('success', false, 'error', 'Name must be 1-100 characters');
@@ -107,27 +113,53 @@ BEGIN
     RETURN jsonb_build_object('success', true, 'message', 'Review submitted');
 EXCEPTION WHEN OTHERS THEN RETURN jsonb_build_object('success', false, 'error', 'Review submission failed: ' || SQLERRM);
 END;
-2846265;
+$$;
 
--- Function for staff to get orders
+-- ============================================================
+-- SECURITY DEFINER FUNCTION: get_orders_staff
+-- ============================================================
 CREATE OR REPLACE FUNCTION get_orders_staff(
-    p_status TEXT DEFAULT NULL, p_from TIMESTAMPTZ DEFAULT NULL,
-    p_to TIMESTAMPTZ DEFAULT NULL, p_limit INT DEFAULT 50, p_offset INT DEFAULT 0
-) RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER AS 2846265
-DECLARE v_result JSONB;
+    p_status TEXT,
+    p_from TIMESTAMPTZ,
+    p_to TIMESTAMPTZ,
+    p_limit INT,
+    p_offset INT
+) RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE
+    v_result JSONB;
 BEGIN
-    SELECT jsonb_build_object('orders', COALESCE(jsonb_agg(to_jsonb(o) ORDER BY o.created_at DESC), '[]'::jsonb), 'total', COUNT(*) OVER())
-    INTO v_result FROM (SELECT * FROM orders WHERE (p_status IS NULL OR status = p_status) AND (p_from IS NULL OR created_at >= p_from) AND (p_to IS NULL OR created_at <= p_to) ORDER BY created_at DESC LIMIT p_limit OFFSET p_offset) o;
+    SELECT jsonb_build_object(
+        'orders', COALESCE(jsonb_agg(to_jsonb(o) ORDER BY o.created_at DESC), '[]'::jsonb),
+        'total', COUNT(*) OVER()
+    ) INTO v_result
+    FROM (
+        SELECT * FROM orders
+        WHERE (p_status IS NULL OR status = p_status)
+        AND (p_from IS NULL OR created_at >= p_from)
+        AND (p_to IS NULL OR created_at <= p_to)
+        ORDER BY created_at DESC
+        LIMIT p_limit OFFSET p_offset
+    ) o;
     RETURN COALESCE(v_result, jsonb_build_object('orders', '[]'::jsonb, 'total', 0));
 END;
-2846265;
+$$;
 
--- Function for staff to create bill from order
+-- ============================================================
+-- SECURITY DEFINER FUNCTION: create_bill_from_order_server
+-- ============================================================
 CREATE OR REPLACE FUNCTION create_bill_from_order_server(
-    p_order_id UUID, p_payment_method TEXT,
-    p_discount_paise INT DEFAULT 0, p_tax_paise INT DEFAULT 0
-) RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER AS 2846265
-DECLARE v_order RECORD; v_bill_id UUID; v_bill_number TEXT; v_subtotal_paise INT; v_total_paise INT; v_item RECORD;
+    p_order_id UUID,
+    p_payment_method TEXT,
+    p_discount_paise INT,
+    p_tax_paise INT
+) RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE
+    v_order RECORD;
+    v_bill_id UUID;
+    v_bill_number TEXT;
+    v_subtotal_paise INT;
+    v_total_paise INT;
+    v_item RECORD;
 BEGIN
     SELECT * INTO v_order FROM orders WHERE id = p_order_id;
     IF NOT FOUND THEN RETURN jsonb_build_object('success', false, 'error', 'Order not found'); END IF;
@@ -145,9 +177,39 @@ BEGIN
     RETURN jsonb_build_object('success', true, 'bill_id', v_bill_id, 'bill_number', v_bill_number, 'total_paise', v_total_paise);
 EXCEPTION WHEN OTHERS THEN RETURN jsonb_build_object('success', false, 'error', 'Bill creation failed: ' || SQLERRM);
 END;
-2846265;
+$$;
 
-REVOKE ALL ON FUNCTION create_order_server FROM PUBLIC;
-REVOKE ALL ON FUNCTION submit_review_server FROM PUBLIC;
-REVOKE ALL ON FUNCTION get_orders_staff FROM PUBLIC;
-REVOKE ALL ON FUNCTION create_bill_from_order_server FROM PUBLIC;
+-- ============================================================
+-- SECURITY DEFINER FUNCTION: check_rate_limit
+-- ============================================================
+CREATE OR REPLACE FUNCTION check_rate_limit(
+    p_identifier TEXT,
+    p_endpoint TEXT,
+    p_max_requests INT,
+    p_window_minutes INT
+) RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE
+    v_window_start TIMESTAMPTZ := now() - (p_window_minutes || ' minutes')::interval;
+    v_current_count INT;
+    v_remaining INT;
+BEGIN
+    DELETE FROM rate_limits WHERE window_start < v_window_start;
+    INSERT INTO rate_limits (identifier, endpoint, request_count, window_start)
+    VALUES (p_identifier, p_endpoint, 1, now())
+    ON CONFLICT (identifier, endpoint) DO UPDATE SET
+        request_count = rate_limits.request_count + 1,
+        updated_at = now()
+    RETURNING request_count INTO v_current_count;
+    v_remaining := GREATEST(p_max_requests - v_current_count, 0);
+    IF v_current_count > p_max_requests THEN
+        RETURN jsonb_build_object('allowed', false, 'remaining', 0, 'reset_at', (now() + (p_window_minutes || ' minutes')::interval)::text, 'error', 'Rate limit exceeded. Try again later.');
+    END IF;
+    RETURN jsonb_build_object('allowed', true, 'remaining', v_remaining, 'limit', p_max_requests, 'reset_at', (now() + (p_window_minutes || ' minutes')::interval)::text);
+END;
+$$;
+
+REVOKE ALL ON FUNCTION create_order_server(TEXT, TEXT, TEXT, TEXT, TEXT, TIMESTAMPTZ, TEXT, NUMERIC, NUMERIC, JSONB, TEXT) FROM PUBLIC;
+REVOKE ALL ON FUNCTION submit_review_server(TEXT, INT, TEXT) FROM PUBLIC;
+REVOKE ALL ON FUNCTION get_orders_staff(TEXT, TIMESTAMPTZ, TIMESTAMPTZ, INT, INT) FROM PUBLIC;
+REVOKE ALL ON FUNCTION create_bill_from_order_server(UUID, TEXT, INT, INT) FROM PUBLIC;
+REVOKE ALL ON FUNCTION check_rate_limit(TEXT, TEXT, INT, INT) FROM PUBLIC;

@@ -11,7 +11,7 @@ BEGIN
 END;
 $$;
 
--- Apply to all tables with updated_at
+-- Apply to all tables with updated_at (expenses trigger will be added in migration 009 after expenses table exists)
 CREATE TRIGGER trg_menu_categories_updated BEFORE UPDATE ON menu_categories FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 CREATE TRIGGER trg_menu_items_updated BEFORE UPDATE ON menu_items FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 CREATE TRIGGER trg_combos_updated BEFORE UPDATE ON combos FOR EACH ROW EXECUTE FUNCTION set_updated_at();
@@ -19,4 +19,4 @@ CREATE TRIGGER trg_promotions_updated BEFORE UPDATE ON promotions FOR EACH ROW E
 CREATE TRIGGER trg_cafe_settings_updated BEFORE UPDATE ON cafe_settings FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 CREATE TRIGGER trg_orders_updated BEFORE UPDATE ON orders FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 CREATE TRIGGER trg_bills_updated BEFORE UPDATE ON bills FOR EACH ROW EXECUTE FUNCTION set_updated_at();
-CREATE TRIGGER trg_expenses_updated BEFORE UPDATE ON expenses FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+-- expenses trigger will be added in migration 009 after expenses table exists
