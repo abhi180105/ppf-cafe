@@ -213,3 +213,32 @@ REVOKE ALL ON FUNCTION submit_review_server(TEXT, INT, TEXT) FROM PUBLIC;
 REVOKE ALL ON FUNCTION get_orders_staff(TEXT, TIMESTAMPTZ, TIMESTAMPTZ, INT, INT) FROM PUBLIC;
 REVOKE ALL ON FUNCTION create_bill_from_order_server(UUID, TEXT, INT, INT) FROM PUBLIC;
 REVOKE ALL ON FUNCTION check_rate_limit(TEXT, TEXT, INT, INT) FROM PUBLIC;
+
+-- ============================================================
+-- SECURITY DEFINER FUNCTION: is_staff_v2_safe
+-- Safe wrapper for Netlify Functions to check staff status
+-- Returns false instead of error if auth.uid() unavailable
+-- ============================================================
+CREATE OR REPLACE FUNCTION is_staff_v2_safe(
+    p_user_id UUID
+) RETURNS BOOLEAN LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE
+    v_is_staff BOOLEAN := false;
+BEGIN
+    -- Use PL/pgSQL to handle missing auth.uid() gracefully
+    BEGIN
+        SELECT EXISTS (
+            SELECT 1 FROM staff_users
+            WHERE user_id = p_user_id
+            AND is_active = true
+        ) INTO v_is_staff;
+    EXCEPTION WHEN OTHERS THEN
+        -- Fail closed: deny access on any error
+        v_is_staff := false;
+    END;
+    RETURN v_is_staff;
+END;
+$$;
+
+-- Revoke execute from PUBLIC (service role only via SECURITY DEFINER)
+REVOKE ALL ON FUNCTION is_staff_v2_safe(UUID) FROM PUBLIC;

@@ -19,7 +19,9 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
     const token = authHeader.slice(7);
     const { user, error: authError } = await getUserFromToken(token);
     if (authError || !user) return createErrorResponse({ code: ErrorCodes.UNAUTHORIZED, message: 'Invalid or expired token', statusCode: 401 }, correlationId);
-    if (!isStaff(user)) return createErrorResponse({ code: ErrorCodes.FORBIDDEN, message: 'Staff access required', statusCode: 403 }, correlationId);
+    
+    // Verify staff status via staff_users table (authoritative source)
+    if (!await isStaff(user.id)) return createErrorResponse({ code: ErrorCodes.FORBIDDEN, message: 'Staff access required', statusCode: 403 }, correlationId);
 
     const queryValidation = validate(StaffOrdersQuerySchema, event.queryStringParameters || {});
     if (!queryValidation.success) return handleValidationError(queryValidation.errors, correlationId);

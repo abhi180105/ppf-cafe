@@ -19,7 +19,8 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
     const { user, error } = await getUserFromToken(token);
     if (error || !user) return createErrorResponse({ code: ErrorCodes.UNAUTHORIZED, message: 'Invalid or expired token', statusCode: 401 }, correlationId);
 
-    const staff = isStaff(user);
+    // Verify staff status via staff_users table (authoritative source)
+    const staff = await isStaff(user.id);
     if (!staff) return createErrorResponse({ code: ErrorCodes.FORBIDDEN, message: 'Staff access required', statusCode: 403 }, correlationId);
 
     logger.info('Staff session verified', { userId: user.id });

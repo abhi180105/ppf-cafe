@@ -7,6 +7,32 @@ import { PlaceOrderBodySchema, validate } from '../_shared/validation';
 import { handleError, handleValidationError, createSuccessResponse, createErrorResponse, ErrorCodes } from '../_shared/errors';
 import { logInfo, logError, createChildLogger } from '../_shared/logging';
 
+// Extract client IP with fallback chain (Netlify sets these headers)
+function getClientIp(event: HandlerEvent): string {
+    // Netlify sets x-forwarded-for (may contain multiple IPs, first is original client)
+    const forwarded = event.headers['x-forwarded-for'];
+    if (forwarded) {
+        const ips = forwarded.split(',').map(ip => ip.trim());
+        // Return first non-private IP if possible, else first
+        for (const ip of ips) {
+            if (!ip.startsWith('10.') && !ip.startsWith('192.168.') && !ip.startsWith('172.')) {
+                return ip;
+            }
+        }
+        return ips[0];
+    }
+    // Fallback to x-real-ip (set by some proxies)
+    if (event.headers['x-real-ip']) return event.headers['x-real-ip'];
+    // Fallback to Netlify context (if available)
+    // Note: Netlify Functions v2 may provide clientContext
+    // @ts-ignore - Netlify context extension
+    if (typeof globalThis !== 'undefined' && (globalThis as any).netlifyContext?.clientContext?.custom?.ip) {
+        // @ts-ignore
+        return (globalThis as any).netlifyContext.clientContext.custom.ip;
+    }
+    return 'unknown';
+}
+
 const handler: Handler = async (event: HandlerEvent, context: HandlerContext) => {
     const correlationId = `req_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
     const logger = createChildLogger({ correlationId, functionName: 'place-order' });
@@ -14,8 +40,8 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
     if (event.httpMethod !== 'POST') return createErrorResponse({ code: ErrorCodes.VALIDATION_ERROR, message: 'Method not allowed', statusCode: 405 }, correlationId);
     if (!event.body) return createErrorResponse({ code: ErrorCodes.VALIDATION_ERROR, message: 'Request body required', statusCode: 400 }, correlationId);
 
-    // Rate limiting by IP
-    const clientIp = event.headers['x-forwarded-for']?.split(',')[0]?.trim() || event.headers['x-real-ip'] || 'unknown';
+    // Rate limiting by IP (with improved IP extraction)
+    const clientIp = getClientIp(event);
     const supabase = getSupabaseAdmin();
     const { data: rateLimit } = await supabase.rpc('check_rate_limit', { p_identifier: clientIp, p_endpoint: 'place-order', p_max_requests: 10, p_window_minutes: 15 });
     if (rateLimit && !rateLimit.allowed) return { statusCode: 429, headers: { 'Content-Type': 'application/json', 'Retry-After': '900' }, body: JSON.stringify(createErrorResponse({ code: ErrorCodes.RATE_LIMITED, message: 'Rate limit exceeded. Try again later.', statusCode: 429 }, correlationId)) };
@@ -46,7 +72,7 @@ const handler: Handler = async (event: HandlerEvent, context: HandlerContext) =>
         if (error) throw error;
         if (!result.success) return createErrorResponse({ code: result.code || ErrorCodes.INTERNAL_ERROR, message: result.error, statusCode: result.code === 'IDEMPOTENCY_CONFLICT' ? 409 : 400 }, correlationId);
 
-        logger.info('Order created successfully', { orderId: result.order_id, totalPaise: result.total_paise });
+        logger.info('Order created successfully', { orderId: result.order_id, totalPaise: result.total_paise, clientIp });
         return { statusCode: 201, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(createSuccessResponse({ order_id: result.order_id, total_paise: result.total_paise, subtotal_paise: result.subtotal_paise }, correlationId)) };
     } catch (err) { logError('Failed to place order', { error: err instanceof Error ? err.message : String(err) }, err instanceof Error ? err : undefined); return handleError(err, correlationId); }
 };

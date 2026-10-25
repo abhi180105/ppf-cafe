@@ -34,8 +34,20 @@ export async function getUserFromToken(token: string) {
     return { user: data.user, error: null };
 }
 
-// Check if user has staff role via app_metadata
-export function isStaff(user: { app_metadata?: Record<string, unknown> } | null): boolean {
+// Check if user has staff role via staff_users table (authoritative source)
+// This replaces the JWT-based check to align with DB RLS policies
+export async function isStaff(userId: string): Promise<boolean> {
+    const supabase = getSupabaseAdmin();
+    const { data, error } = await supabase.rpc('is_staff_v2_safe', { p_user_id: userId });
+    if (error) {
+        // Fail closed - deny access on error
+        return false;
+    }
+    return data === true;
+}
+
+// Legacy JWT-based check (deprecated - kept for reference)
+export function isStaffLegacy(user: { app_metadata?: Record<string, unknown> } | null): boolean {
     if (!user) return false;
     return user.app_metadata?.role === 'staff';
 }
